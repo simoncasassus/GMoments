@@ -135,7 +135,7 @@ def fitter(alos):
     
     selected_velocities = velocities[mask]      
     selected_losspectrum=lineofsight_spectrum[mask]
-    Amp_init=selected_losspectrum.max() - selected_losspectrum.mean()
+    Amp_init=selected_losspectrum.max() #- selected_losspectrum.mean()
     if ((Amp_init  <= 0) or (np.isnan(Amp_init))):
         return [None]
 
@@ -274,7 +274,7 @@ def fitter(alos):
         mu2_init=v0_init2
         sigma2_init=sigma_init
 
-        limit_a2=[0., Amp_init] #Bounds for pars
+        limit_a2=[0., 5.*Amp_init] #Bounds for pars
         limit_mu2=[velocities.min()-1.0, velocities.max()+1.0]
         limit_sigma2=[dv/3., sigma_max]
         
