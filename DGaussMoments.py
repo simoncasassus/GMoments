@@ -853,13 +853,15 @@ def exec_Gfit(cubefile,workdir=None,wBaseline=False,n_cores=30,zoom_area=-1.,Noi
     
     if (not 'BMAJ' in headim.keys()):
         print("no beam info, look for extra HDU")
-        beamdata = pf.open(cubefile)[1].data
-        bmaj=beamdata[0][0]
-        bmin=beamdata[0][1]
-        bpa=beamdata[0][2]
-        headim['BMAJ']=bmaj/3600.
-        headim['BMIN']=bmin/3600.
-        headim['BPA']=bmaj
+        hdulist=pf.open(cubefile)
+        if (len(hdulist)>1):
+            beamdata = hdulist[1].data
+            bmaj=beamdata[0][0]
+            bmin=beamdata[0][1]
+            bpa=beamdata[0][2]
+            headim['BMAJ']=bmaj/3600.
+            headim['BMIN']=bmin/3600.
+            headim['BPA']=bmaj
 
 
     headim.pop('CTYPE3', None)
