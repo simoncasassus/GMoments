@@ -141,7 +141,7 @@ def fitter(alos):
 
     #v0_init = selected_velocities[selected_losspectrum==selected_losspectrum.max()]
     v0_init = selected_velocities[np.argmax(selected_losspectrum)] 
-    sigma_init=dv
+    sigma_init=3.*dv
     sigma_max=10.
     if LocalNoise:
     ## take the error as the rmsnoise far from the line
@@ -250,37 +250,44 @@ def fitter(alos):
     if (DGauss):
         # velorange=velocities.min()-1.0, velocities.max()+1.0
 
-        #a1_init=Amp_init
-        #mu1_init=v0_init
+        a1_init=Amp_init
+        mu1_init=v0_init
         #sigma1_init=sigma_init
 
-        a1_init=g_amp
-        mu1_init=g_v0
-        sigma1_init=g_sigma
+        #a1_init=g_amp
+        #mu1_init=g_v0
+        sigma1_init=g_sigma*0.8
+
+        #v0_init2 = v0_init
+        #a2_init=Amp_init*0.5
+        
+        mu2_init = g_v0
+        a2_init=g_amp*0.5
+        sigma2_init=g_sigma*0.8
+
 
         if (Randomize):
             #v0_init2 = v0_init + 3.*dv*(np.random.random()-0.5) # selected_velocities[selected_losspectrum==selected_losspectrum.max()]
             #a2_init=Amp_init*0.2 #0.5 # np.random.random()
-            v0_init2 = g_v0 + 3.*dv*(np.random.random()-0.5) # selected_velocities[selected_losspectrum==selected_losspectrum.max()]
-            a2_init=g_amp*0.2 #0.5 # np.random.random()
+
+            sigma1_init=g_sigma*(0.8+ 0.2*(np.random.random()-0.5)/0.5)
+
+            
+            v0_init2 = g_v0 + 3.*dv*(np.random.random()-0.5) # 
             if ( (v0_init2  < limit_mu1[0]) or (v0_init2  > limit_mu1[1])):
                 v0_init2 = v0_init
-        else:
-            #v0_init2 = v0_init
-            #a2_init=Amp_init*0.5
-            v0_init2 = g_v0
-            a2_init=g_amp*0.5
+            mu2_init=v0_init2
+            a2_init=g_amp*(0.4+ 0.2*(np.random.random()-0.5)/0.5)
+            sigma2_init=g_sigma*(0.6+ 0.2*(np.random.random()-0.5)/0.5)
             
-        mu2_init=v0_init2
-        sigma2_init=sigma_init
 
-        limit_a2=[0., 5.*Amp_init] #Bounds for pars
+        limit_a2=[0., Amp_init] #Bounds for pars
         limit_mu2=[velocities.min()-1.0, velocities.max()+1.0]
         limit_sigma2=[dv/3., sigma_max]
         
-        fallback_error_a2=limit_a1[1] 
-        fallback_error_mu2=100.
-        fallback_error_sigma2=100.
+        fallback_error_a2=fallback_error_a1
+        fallback_error_mu2=fallback_error_mu1
+        fallback_error_sigma2=fallback_error_sigma1
 
         
         if (CommonSigma):
@@ -475,24 +482,48 @@ def fitter(alos):
     if DGauss:
         v1=min(velocities[0],velocities[-1])
         v2=max(velocities[0],velocities[-1])
+
+        simpssign=1.
+        if (velocities[1]<velocities[0]):
+            simpssign=-1.
         
+
         func_wargs = lambda v: func(v, *popt_nobase_args)
-        integ_result=quad(func_wargs,v1,v2)
-        gmom_0_quad = integ_result[0]
+        if DoQuad:
+            integ_result=quad(func_wargs,v1,v2,full_output=1)
+            gmom_0_quad = integ_result[0]
+        else:
+            evalfunc=func_wargs(velocities)
+            gmom_0_quad = simpssign*simps(evalfunc,velocities)
+
 
         first_mom_func_wargs = lambda v: v * func(v, *popt_nobase_args)
-        
-        integ_result=quad(first_mom_func_wargs,v1,v2)
-        gmom_1_quad = integ_result[0]/gmom_0_quad
+        if DoQuad:
+            integ_result=quad(first_mom_func_wargs,v1,v2,full_output=1)
+            Num_mom1=integ_result[0]
+        else:
+            evalfunc=first_mom_func_wargs(velocities)
+            Num_mom1 = simpssign*simps(evalfunc,velocities)
+            
+        if (gmom_0_quad <= 1E-20):
+            gmom_1_quad = fallback_error_mu1
+        else:
+            gmom_1_quad = Num_mom1/gmom_0_quad
+
 
         second_mom_func_wargs = lambda v: ((v-gmom_1_quad)**2 * func(v, *popt_nobase_args))
-        
-        integ_result=quad(second_mom_func_wargs,v1,v2)
-        
-        if ((gmom_0_quad <= 0) or (integ_result[0] <= 0)):
+
+        if DoQuad:
+            integ_result=quad(second_mom_func_wargs,v1,v2,full_output=1)
+            Num_mom2=integ_result[0]
+        else:
+            evalfunc=second_mom_func_wargs(velocities)
+            Num_mom2 = simpssign*simps(evalfunc,velocities)
+            
+        if ((gmom_0_quad <= 0) or (Num_mom2 <= 0)):
             gmom_2_quad = 0.
         else:
-            gmom_2_quad = np.sqrt((integ_result[0]) /gmom_0_quad)
+            gmom_2_quad = np.sqrt((Num_mom2) /gmom_0_quad)
         
         
     #gmom_0_quad = np.sqrt( 2. * np.pi) * g_sigma * g_amp
@@ -584,10 +615,14 @@ def fitter(alos):
     return passresults
 
 
-def exec_Gfit(cubefile,workdir=None,wBaseline=False,n_cores=30,zoom_area=-1.,Noise=-1.0,Clip=False,DoubleGauss=False,StoreModel=False,Randomize2ndGauss=True,ShrinkCanvas=True,UseCommonSigma=False,PassRestFreq=-1,UseLOSNoise=False,singleLOS=False,MaskChannels=False):
+def exec_Gfit(cubefile,workdir=None,wBaseline=False,n_cores=30,zoom_area=-1.,Noise=-1.0,Clip=False,DoubleGauss=False,StoreModel=False,Randomize2ndGauss=True,ShrinkCanvas=True,UseCommonSigma=False,PassRestFreq=-1,UseLOSNoise=False,singleLOS=False,MaskChannels=False,PerformAccurateInteg=True):
     #Region=True: zoom into central region, defined as nx/2., with half side zoom_area 
     #zoom_area=1.2 # arcsec
 
+
+    # PerformAccurateInteg=False, speed up by 10% 
+
+    
     global n
     global side_pix
     global cube 
@@ -604,7 +639,7 @@ def exec_Gfit(cubefile,workdir=None,wBaseline=False,n_cores=30,zoom_area=-1.,Noi
     global LocalNoise
     global ViewSingleSpectrum
     global BadChannels
-
+    global DoQuad
     
     
     start_time=time.time()
@@ -621,6 +656,7 @@ def exec_Gfit(cubefile,workdir=None,wBaseline=False,n_cores=30,zoom_area=-1.,Noi
     if (singleLOS):
         ViewSingleSpectrum=True
     BadChannels=MaskChannels
+    DoQuad=PerformAccurateInteg
     
     print("Collapsing cube from file:",cubefile)
     print(">>>>",cubefile)
