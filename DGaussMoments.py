@@ -297,7 +297,7 @@ def fitter(alos):
                 bounds=(limit_a1, limit_mu1, limit_sigma1, limit_a2, limit_mu2, limit_base_a, limit_base_b)
                 fallback_errors=np.array((fallback_error_a1,fallback_error_mu1,fallback_error_sigma1,fallback_error_a2,fallback_error_mu2,fallback_error_base_a,fallback_error_base_b))
             else:
-                func = lambda x,a1,mu1,sigma1,a2,mu2: dgauss_wbase(x, a1, mu1, sigma1, a2, mu2, base_a_init,base_b_init)
+                func = lambda x,a1,mu1,sigma1,a2,mu2: dgauss_wbase(x, a1, mu1, sigma1, a2, mu2, sigma1, base_a_init,base_b_init)
                 p0=np.array([a1_init, mu1_init, sigma1_init, a2_init, mu2_init])
                 bounds=(limit_a1, limit_mu1, limit_sigma1, limit_a2, limit_mu2)
                 fallback_errors=np.array((fallback_error_a1,fallback_error_mu1,fallback_error_sigma1,fallback_error_a2,fallback_error_mu2))
@@ -539,6 +539,13 @@ def fitter(alos):
     if (ViewSingleSpectrum):
         import matplotlib.pyplot as plt
         fig1,ax1=plt.subplots()
+
+        save_prof = np.zeros((len(velocities),2))
+        save_prof[:,0] = velocities
+        save_prof[:,1] = lineofsight_spectrum
+        fileout_spectrum='LOSspectrum_'+str(LOS['dalpha'])+'_'+str(LOS['ddelta'])+'.dat'
+        np.savetxt(fileout_spectrum, save_prof)   
+        
         theplot=ax1.plot(velocities,fit1,label='model',lw=4.,alpha=0.5)
         ax1.plot(velocities,lineofsight_spectrum,label='obs')
         plt.legend()
@@ -638,6 +645,7 @@ def exec_Gfit(cubefile,workdir=None,wBaseline=False,n_cores=30,zoom_area=-1.,Noi
     global CommonSigma
     global LocalNoise
     global ViewSingleSpectrum
+    global LOS
     global BadChannels
     global DoQuad
     
@@ -655,6 +663,7 @@ def exec_Gfit(cubefile,workdir=None,wBaseline=False,n_cores=30,zoom_area=-1.,Noi
     ViewSingleSpectrum=False
     if (singleLOS):
         ViewSingleSpectrum=True
+        LOS=singleLOS
     BadChannels=MaskChannels
     DoQuad=PerformAccurateInteg
     
