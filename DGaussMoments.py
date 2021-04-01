@@ -466,7 +466,8 @@ def fitter(alos):
             #print("Scipy optimize",vpeak," Minuit optimize",vpeakMinuit)
 
             
-    gmom_0 = abs(simps(fit1,velocities))
+    # gmom_0 = abs(simps(fit1,velocities))
+    gmom_0 = np.sqrt(2.*np.pi)*g_sigma*g_amp # abs(simps(fit1,velocities))
 
     popt_nobase = deepcopy(popt)
     if (DoBaseline):
