@@ -15,7 +15,7 @@ import re
 import scipy.optimize as op
 from tqdm import tqdm
 import time
-
+import numpy.ma as ma
 
 from operator import itemgetter, attrgetter
 
@@ -123,11 +123,18 @@ def fitter(alos):
         lineofsight_spectrum = cube[:,j,i]
 
 
-        
+    
     if (lineofsight_spectrum.max() <= 0):
         return [None]
     #mask=lineofsight_spectrum > -0.01 * lineofsight_spectrum.max() ##mask for values too negative.
+
+    if (isinstance(MaskCube,np.ndarray)):
+        masklos=np.logical_not(ma.make_mask(MaskCube[:,j,i]))
+        
+        lineofsight_spectrum[masklos]=0.
+        
     mask=np.ones((len(lineofsight_spectrum),), dtype=bool)
+        
     if BadChannels:
         ibadchan1 = BadChannels[0]
         ibadchan2 = BadChannels[1]
@@ -623,7 +630,7 @@ def fitter(alos):
     return passresults
 
 
-def exec_Gfit(cubefile,workdir=None,wBaseline=False,n_cores=30,zoom_area=-1.,Noise=-1.0,Clip=False,DoubleGauss=False,StoreModel=False,Randomize2ndGauss=True,ShrinkCanvas=True,UseCommonSigma=False,PassRestFreq=-1,UseLOSNoise=False,singleLOS=False,MaskChannels=False,PerformAccurateInteg=True):
+def exec_Gfit(cubefile,workdir=None,wBaseline=False,n_cores=30,zoom_area=-1.,Noise=-1.0,Clip=False,DoubleGauss=False,StoreModel=False,Randomize2ndGauss=True,ShrinkCanvas=True,UseCommonSigma=False,PassRestFreq=-1,UseLOSNoise=False,singleLOS=False,MaskChannels=False,cubemask=False,PerformAccurateInteg=True):
     #Region=True: zoom into central region, defined as nx/2., with half side zoom_area 
     #zoom_area=1.2 # arcsec
 
@@ -649,7 +656,7 @@ def exec_Gfit(cubefile,workdir=None,wBaseline=False,n_cores=30,zoom_area=-1.,Noi
     global LOS
     global BadChannels
     global DoQuad
-    
+    global MaskCube
     
     start_time=time.time()
     print("start Curve_fit:",time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
@@ -675,6 +682,15 @@ def exec_Gfit(cubefile,workdir=None,wBaseline=False,n_cores=30,zoom_area=-1.,Noi
     datahdr = pf.open(cubefile)[0].header
 
     print("datacube.shape",datacube.shape)
+
+    MaskCube=False
+    if cubemask:
+        MaskCube = pf.open(cubemask)[0].data
+        print(type(MaskCube))
+        
+
+        #datahdr = pf.open(cubemask)[0].header
+        
 
     # if len(cube.shape)>3:
     #    # cube = cube[1:]
