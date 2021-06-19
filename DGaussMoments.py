@@ -149,6 +149,7 @@ def fitter(alos):
     #v0_init = selected_velocities[selected_losspectrum==selected_losspectrum.max()]
     v0_init = selected_velocities[np.argmax(selected_losspectrum)] 
     sigma_init=3.*dv
+    sigma_init=dv
     sigma_max=10.
     if LocalNoise:
     ## take the error as the rmsnoise far from the line
@@ -257,13 +258,13 @@ def fitter(alos):
     if (DGauss):
         # velorange=velocities.min()-1.0, velocities.max()+1.0
 
-        a1_init=Amp_init
-        mu1_init=v0_init
+        #a1_init=Amp_init
+        #mu1_init=v0_init
         #sigma1_init=sigma_init
 
-        #a1_init=g_amp
-        #mu1_init=g_v0
-        sigma1_init=g_sigma*0.8
+        a1_init=g_amp
+        mu1_init=g_v0
+        sigma1_init=g_sigma
 
         #v0_init2 = v0_init
         #a2_init=Amp_init*0.5
