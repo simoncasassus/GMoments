@@ -124,15 +124,15 @@ def fitter(alos):
 
 
     
-    if (lineofsight_spectrum.max() <= 0):
-        return [None]
     #mask=lineofsight_spectrum > -0.01 * lineofsight_spectrum.max() ##mask for values too negative.
 
     if (isinstance(MaskCube,np.ndarray)):
         masklos=np.logical_not(ma.make_mask(MaskCube[:,j,i]))
-        
         lineofsight_spectrum[masklos]=0.
-        
+
+    if (lineofsight_spectrum.max() <= 0):
+        return [None]
+
     mask=np.ones((len(lineofsight_spectrum),), dtype=bool)
         
     if BadChannels:
