@@ -13,7 +13,7 @@ import matplotlib.colors as colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from  scipy.signal import medfilt2d
 
-include_path='/Users/simon/common/python/include/'
+include_path='/home/simon/common/python/include/'
 sys.path.append(include_path)
 import ImUtils.Resamp as Resamp
 import ImUtils.Cube2Im as Cube2Im
@@ -221,7 +221,7 @@ def addimage(iplotpos,label,atitle,filename_grey,filename_contours,filename_erro
                 clabels=['%.1f' % (clevs[0]),'%.1f' % (clevs[1])]
 
 
-        if ('sigma' in filename_grey):
+        if ('sigma' in os.path.basename(filename_grey)):
                 cmap='magma_r'
 
         print("max:",np.max(subim_grey))
