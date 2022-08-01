@@ -51,6 +51,8 @@ def addimage(iplotpos,
              nplotsy=2,
              SymmetricRange=False,
              MedianvalRange=False,
+             MedfiltGrey=False,
+             Medfiltfact=1.,
              DoCB=True,
              cmap='RdBu_r',
              MedRms=True,
@@ -105,14 +107,7 @@ def addimage(iplotpos,
         hdr_greycont = finc.header
         #cdelt = 3600. * hdr_greycont['CDELT2']
         #side0 = hdr_grey['NAXIS2'] * cdelt
-        
-        
 
-
-                
-
-
-    
     if Zoom:
         side = Side
         if (side > side0):
@@ -140,7 +135,6 @@ def addimage(iplotpos,
                 subim_greycont = hduzoom.data
                 hdr_greycont = hduzoom.header
 
-            
         else:
             i_star = hdr_grey['CRPIX1'] - 1.
             j_star = hdr_grey['CRPIX2'] - 1.
@@ -166,6 +160,13 @@ def addimage(iplotpos,
 
         subim_grey = im_grey.copy()
 
+    if MedfiltGrey:
+        print("median filtering ",filename_grey)
+        medsubim_grey = medfilt2d(subim_grey, kernel_size=11)
+        mask = np.where(np.fabs((subim_grey - medsubim_grey) / medsubim_grey) > Medfiltfact)
+        subim_grey[mask]=medsubim_grey[mask]
+        
+        
     a0 = side / 2.
     a1 = -side / 2.
     d0 = -side / 2.
@@ -292,11 +293,15 @@ def addimage(iplotpos,
 
     if filename_contours:
         levels = contlevels
-        CS = ax.contour(subim_greycont,levels , origin='lower', linewidths=1.0,
-                        linestyles = 'solid', alpha=0.6,
-                        extent=[a0,a1,d0,d1], colors='white')
+        CS = ax.contour(subim_greycont,
+                        levels,
+                        origin='lower',
+                        linewidths=1.0,
+                        linestyles='solid',
+                        alpha=0.6,
+                        extent=[a0, a1, d0, d1],
+                        colors='white')
 
-        
     plt.plot(0., 0., marker='*', color='yellow', markersize=0.4)
 
     ax.text(a1 * 0.9,
@@ -351,6 +356,7 @@ def exec_summary(workdir,
                  ngauss=2,
                  Zoom=False,
                  Side=1.5,
+                 MedfiltGrey=False,
                  WCont=True,
                  contlevels=[],
                  filename_continuum=False):
@@ -490,6 +496,8 @@ def exec_summary(workdir,
                                  vsyst=vsyst,
                                  nplotsx=nplotsx,
                                  nplotsy=nplotsy,
+                                 MedfiltGrey=MedfiltGrey,
+                                 Medfiltfact=1.,
                                  SymmetricRange=False,
                                  MedianvalRange=True,
                                  MedRms=True,
@@ -553,6 +561,8 @@ def exec_summary(workdir,
                                 DoGreyCont=False,
                                 vsyst=vsyst,
                                 nplotsx=nplotsx,
+                                MedfiltGrey=MedfiltGrey,
+                                Medfiltfact=0.2,
                                 nplotsy=nplotsy,
                                 SymmetricRange=5.,
                                 DoCB=True,
@@ -684,6 +694,8 @@ def exec_summary(workdir,
                                     nplotsx=nplotsx,
                                     nplotsy=nplotsy,
                                     SymmetricRange=False,
+                                    MedfiltGrey=MedfiltGrey,
+                                    Medfiltfact=0.2,
                                     MedianvalRange=True,
                                     DoCB=True,
                                     cmap=cmap,
@@ -713,6 +725,8 @@ def exec_summary(workdir,
                                     DoGreyCont=False,
                                     vsyst=vsyst,
                                     nplotsx=nplotsx,
+                                    MedfiltGrey=MedfiltGrey,
+                                    Medfiltfact=0.2,
                                     nplotsy=nplotsy,
                                     SymmetricRange=5.,
                                     DoCB=True,
