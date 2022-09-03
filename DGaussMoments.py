@@ -766,7 +766,8 @@ def exec_Gfit(cubefile,
     MaskCube = False
     if cubemask:
         MaskCube = pf.open(cubemask)[0].data
-        print(type(MaskCube))
+        print("MaskCube.shape", MaskCube.shape)
+        #print(type(MaskCube))
 
         #datahdr = pf.open(cubemask)[0].header
 
