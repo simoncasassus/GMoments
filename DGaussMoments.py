@@ -131,7 +131,6 @@ def fitter(alos):
     if (isinstance(MaskCube, np.ndarray)):
         masklos = np.logical_not(ma.make_mask(MaskCube[:, j, i]))
         lineofsight_spectrum[masklos] = 0.
-
     if (lineofsight_spectrum.max() <= 0):
         return [None]
 
@@ -711,6 +710,7 @@ def exec_Gfit(cubefile,
               singleLOS=False,
               MaskChannels=False,
               cubemask=False,
+              InvertMaskCube=False, # True of uvmem conention
               PerformAccurateInteg=True):
     #Region=True: zoom into central region, defined as nx/2., with half side zoom_area
     #zoom_area=1.2 # arcsec
@@ -767,6 +767,11 @@ def exec_Gfit(cubefile,
     if cubemask:
         MaskCube = pf.open(cubemask)[0].data
         print("MaskCube.shape", MaskCube.shape)
+        if InvertMaskCube:
+            MaskCube[(MaskCube >= 1.)] = 2.
+            MaskCube[(MaskCube < 1.)] = 1.
+            MaskCube[(MaskCube == 2)] = 0.
+
         #print(type(MaskCube))
 
         #datahdr = pf.open(cubemask)[0].header
@@ -831,7 +836,9 @@ def exec_Gfit(cubefile,
             headcube.pop('CRPIX4', None)
         else:
             cube = datacube[:, y_i:y_f, x_i:x_f]
-
+        if (isinstance(MaskCube, np.ndarray)):
+            MaskCube = MaskCube[:, y_i:y_f, x_i:x_f]
+            
         imshape = cube.shape[1:]
         headcube['CRPIX1'] = headcube['CRPIX1'] - x_i
         headcube['CRPIX2'] = headcube['CRPIX2'] - y_i
@@ -913,7 +920,7 @@ def exec_Gfit(cubefile,
     #passpoolresults = p.map(fitter, range(npix))
 
     print(('Done whole pool'))
-    passpoolresults = sp.array(passpoolresults)
+    # passpoolresults = sp.array(passpoolresults)
 
     for alospass in passpoolresults:
         if alospass[0] is None:
@@ -922,6 +929,7 @@ def exec_Gfit(cubefile,
         i = int(alospass[0])
         j = int(alospass[1])
 
+        
         im_gmom_0[j, i] = alospass[2]
         im_g_a[j, i] = alospass[3]
         im_g_a_e[j, i] = alospass[4]
@@ -1043,6 +1051,11 @@ def exec_Gfit(cubefile,
                    cube,
                    headcube,
                    overwrite=True)
+        if (isinstance(MaskCube, np.ndarray)):
+            pf.writeto(workdir + '/' + 'maskcube.fits',
+                       MaskCube,
+                       headcube,
+                       overwrite=True)
 
     pf.writeto(workdir + '/' + 'im_gmom_0.fits',
                im_gmom_0,

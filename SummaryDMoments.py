@@ -160,6 +160,9 @@ def addimage(iplotpos,
 
         subim_grey = im_grey.copy()
 
+        if filename_contours:
+            subim_greycont = im_cont
+
     if MedfiltGrey:
         print("median filtering ",filename_grey)
         medsubim_grey = medfilt2d(subim_grey, kernel_size=11)
