@@ -19,13 +19,13 @@ import numpy.ma as ma
 
 from operator import itemgetter, attrgetter
 
-#if not sys.warnoptions:
-#    import os, warnings
-#    #warnings.simplefilter("default") # Change the filter in this process
-#    warnings.simplefilter("ignore") # Change the filter in this process
-#    #os.environ["PYTHONWARNINGS"] = "default" # Also affect subprocesses
-#    os.environ["PYTHONWARNINGS"] = "ignore" # Also affect subprocesses
-#
+if not sys.warnoptions:
+    import os, warnings
+    #warnings.simplefilter("default") # Change the filter in this process
+    warnings.simplefilter("ignore") # Change the filter in this process
+    #os.environ["PYTHONWARNINGS"] = "default" # Also affect subprocesses
+    os.environ["PYTHONWARNINGS"] = "ignore" # Also affect subprocesses
+
 
 c_kms = 1.e-3 * const.c.value  ## light speed in km/s
 
