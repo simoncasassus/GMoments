@@ -45,7 +45,7 @@ def addimage(iplotpos,
              VisibleYaxis=True,
              DoBeamEllipse=False,
              DoGreyCont=False,
-             contlevels=[],
+             contlevels=[0.4, 0.5, 0.8],
              vsyst=0.,
              nplotsx=2,
              nplotsy=2,
@@ -101,8 +101,9 @@ def addimage(iplotpos,
     side0 = hdr_grey['NAXIS2'] * cdelt
 
     if filename_contours:
-        finc = fits.open(filename_contours)
-        finc = Cube2Im.slice0(finc)
+        finc0 = fits.open(filename_contours)
+        finc0 = Cube2Im.slice0(finc0)
+        finc = Resamp.gridding(finc0, hdr_grey, ReturnHDU=True)
         im_cont = finc.data
         hdr_greycont = finc.header
         #cdelt = 3600. * hdr_greycont['CDELT2']
@@ -164,12 +165,13 @@ def addimage(iplotpos,
             subim_greycont = im_cont
 
     if MedfiltGrey:
-        print("median filtering ",filename_grey)
+        print("median filtering ", filename_grey)
         medsubim_grey = medfilt2d(subim_grey, kernel_size=11)
-        mask = np.where(np.fabs((subim_grey - medsubim_grey) / medsubim_grey) > Medfiltfact)
-        subim_grey[mask]=medsubim_grey[mask]
-        
-        
+        mask = np.where(
+            np.fabs((subim_grey - medsubim_grey) /
+                    medsubim_grey) > Medfiltfact)
+        subim_grey[mask] = medsubim_grey[mask]
+
     a0 = side / 2.
     a1 = -side / 2.
     d0 = -side / 2.
@@ -295,17 +297,18 @@ def addimage(iplotpos,
         #plt.plot(0.,0.,marker='*',color='yellow',markersize=0.2,markeredgecolor='black')
 
     if filename_contours:
-        levels = contlevels
+        levels = np.array(contlevels) * np.max(subim_greycont)
+        print("plotting contoure levels ", levels)
         CS = ax.contour(subim_greycont,
                         levels,
                         origin='lower',
                         linewidths=1.0,
                         linestyles='solid',
-                        alpha=0.6,
+                        alpha=0.9,
                         extent=[a0, a1, d0, d1],
-                        colors='white')
+                        colors='yellow')
 
-    plt.plot(0., 0., marker='*', color='yellow', markersize=0.4)
+    plt.plot(0., 0., marker='*', color='yellow', markersize=2)
 
     ax.text(a1 * 0.9,
             d0 * 0.9,
@@ -361,7 +364,7 @@ def exec_summary(workdir,
                  Side=1.5,
                  MedfiltGrey=False,
                  WCont=True,
-                 contlevels=[],
+                 contlevels=[0.5, 0.8],
                  filename_continuum=False):
 
     # global nplotsx
