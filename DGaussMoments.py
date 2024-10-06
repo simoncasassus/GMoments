@@ -22,16 +22,15 @@ from operator import itemgetter, attrgetter
 if not sys.warnoptions:
     import os, warnings
     #warnings.simplefilter("default") # Change the filter in this process
-    warnings.simplefilter("ignore") # Change the filter in this process
+    warnings.simplefilter("ignore")  # Change the filter in this process
     #os.environ["PYTHONWARNINGS"] = "default" # Also affect subprocesses
-    os.environ["PYTHONWARNINGS"] = "ignore" # Also affect subprocesses
-
+    os.environ["PYTHONWARNINGS"] = "ignore"  # Also affect subprocesses
 
 c_kms = 1.e-3 * const.c.value  ## light speed in km/s
 
 
 def gaussian(x, a, mu, sigma):
-    return a * sp.exp(-.5 * ((x - mu) / sigma)**2.)
+    return a * np.exp(-.5 * ((x - mu) / sigma)**2.)
 
 
 def neggaussfit(x, a, mu, sigma, a2, mu2, sigma2):
@@ -48,7 +47,7 @@ def neggaussfit(x, a, mu, sigma, a2, mu2, sigma2):
 #    baseline=baseparams[0]*x+baseparams[1]
 #    model= baseline+gaussian(x,a,mu,sigma) + gaussian(x,a2,mu2,sigma)
 #    aux = (np.abs(obsspectrum-model))**2.
-#    chi2 = sp.sum(aux)
+#    chi2 = np.sum(aux)
 #    chi2 = chi2/rmsnoise**2.
 #    return chi2
 #
@@ -76,7 +75,7 @@ def sgauss_wbase(x, a1, mu1, sigma1, base_a, base_b):
 #    baseline=baseparams[0]*x+baseparams[1]
 #    model= baseline+gaussian(x,a,mu,sigma) + gaussian(x,a2,mu2,sigma2)
 #    aux = (np.abs(obsspectrum-model))**2.
-#    chi2 = sp.sum(aux)
+#    chi2 = np.sum(aux)
 #    chi2 = chi2/rmsnoise**2.
 #    return chi2
 #
@@ -84,7 +83,7 @@ def sgauss_wbase(x, a1, mu1, sigma1, base_a, base_b):
 #def chi2_2gauss(x,a,mu,sigma,a2,mu2,sigma2,obsspectrum,rmsnoise):
 #    model= gaussian(x,a,mu,sigma) + gaussian(x,a2,mu2,sigma2)
 #    aux = (np.abs(obsspectrum-model))**2.
-#    chi2 = sp.sum(aux)
+#    chi2 = np.sum(aux)
 #    chi2 = chi2/rmsnoise**2.
 #    return chi2
 #
@@ -92,14 +91,14 @@ def sgauss_wbase(x, a1, mu1, sigma1, base_a, base_b):
 #    baseline=baseparams[0]*x+baseparams[1]
 #    gauss = baseline+gaussian(x,a,mu,sigma)
 #    aux = (np.abs(obsspectrum-gauss))**2.
-#    chi2 = sp.sum(aux)
+#    chi2 = np.sum(aux)
 #    chi2 = chi2/rmsnoise**2.
 #    return chi2
 #
 #def chi2_gauss(x,a,mu,sigma,obsspectrum,rmsnoise):
 #    gauss = gaussian(x,a,mu,sigma)
 #    aux = (np.abs(obsspectrum-gauss))**2.
-#    chi2 = sp.sum(aux)
+#    chi2 = np.sum(aux)
 #    chi2 = chi2/rmsnoise**2.
 #    return chi2
 #
@@ -693,25 +692,26 @@ def fitter(alos):
     return passresults
 
 
-def exec_Gfit(cubefile,
-              workdir=None,
-              wBaseline=False,
-              n_cores=30,
-              zoom_area=-1.,
-              Noise=-1.0,
-              Clip=False,
-              DoubleGauss=False,
-              StoreModel=False,
-              Randomize2ndGauss=True,
-              ShrinkCanvas=True,
-              UseCommonSigma=False,
-              PassRestFreq=-1,
-              UseLOSNoise=False,
-              singleLOS=False,
-              MaskChannels=False,
-              cubemask=False,
-              InvertMaskCube=False, # True of uvmem conention
-              PerformAccurateInteg=True):
+def exec_Gfit(
+        cubefile,
+        workdir=None,
+        wBaseline=False,
+        n_cores=30,
+        zoom_area=-1.,
+        Noise=-1.0,
+        Clip=False,
+        DoubleGauss=False,
+        StoreModel=False,
+        Randomize2ndGauss=True,
+        ShrinkCanvas=True,
+        UseCommonSigma=False,
+        PassRestFreq=-1,
+        UseLOSNoise=False,
+        singleLOS=False,
+        MaskChannels=False,
+        cubemask=False,
+        InvertMaskCube=False,  # True of uvmem conention
+        PerformAccurateInteg=True):
     #Region=True: zoom into central region, defined as nx/2., with half side zoom_area
     #zoom_area=1.2 # arcsec
 
@@ -781,14 +781,14 @@ def exec_Gfit(cubefile,
     #    cube = cube[0,:,:,:]
     # print("cube.shape",cube.shape)
 
-    # cube = sp.swapaxes(cube,0,2)
-    # cube = sp.swapaxes(cube,0,1)
+    # cube = np.swapaxes(cube,0,2)
+    # cube = np.swapaxes(cube,0,1)
 
     #dnu = datahdr['CDELT3']
     #len_nu = datahdr['NAXIS3']
     #nui = datahdr['CRVAL3']- (datahdr['CRPIX3']-1)*dnu
     #nuf = nui + (len_nu-1)*dnu
-    #nu = sp.linspace(nui, nuf, len_nu)
+    #nu = np.linspace(nui, nuf, len_nu)
 
     nu = (np.arange(datahdr['NAXIS3']) -
           (datahdr['CRPIX3'] - 1)) * datahdr['CDELT3'] + datahdr['CRVAL3']
@@ -838,7 +838,7 @@ def exec_Gfit(cubefile,
             cube = datacube[:, y_i:y_f, x_i:x_f]
         if (isinstance(MaskCube, np.ndarray)):
             MaskCube = MaskCube[:, y_i:y_f, x_i:x_f]
-            
+
         imshape = cube.shape[1:]
         headcube['CRPIX1'] = headcube['CRPIX1'] - x_i
         headcube['CRPIX2'] = headcube['CRPIX2'] - y_i
@@ -853,41 +853,41 @@ def exec_Gfit(cubefile,
         else:
             imshape = cube.shape[1:]
 
-    im_gmom_0 = sp.zeros(imshape)
+    im_gmom_0 = np.zeros(imshape)
 
-    im_g_a = sp.zeros(imshape)
-    im_g_v0 = sp.zeros(imshape)
-    im_g_sigma = sp.zeros(imshape)
-    im_g_a_e = sp.zeros(imshape)
-    im_g_v0_e = sp.zeros(imshape)
-    im_g_sigma_e = sp.zeros(imshape)
-    im_gmom_8 = sp.zeros(imshape)
+    im_g_a = np.zeros(imshape)
+    im_g_v0 = np.zeros(imshape)
+    im_g_sigma = np.zeros(imshape)
+    im_g_a_e = np.zeros(imshape)
+    im_g_v0_e = np.zeros(imshape)
+    im_g_sigma_e = np.zeros(imshape)
+    im_gmom_8 = np.zeros(imshape)
 
-    SSmom_0 = sp.zeros(imshape)
-    SSmom_1 = sp.zeros(imshape)
-    SSmom_2 = sp.zeros(imshape)
-    SSmom_8 = sp.zeros(imshape)
-    SSIpeak = sp.zeros(imshape)
-    fiterrormap = sp.zeros(imshape)
+    SSmom_0 = np.zeros(imshape)
+    SSmom_1 = np.zeros(imshape)
+    SSmom_2 = np.zeros(imshape)
+    SSmom_8 = np.zeros(imshape)
+    SSIpeak = np.zeros(imshape)
+    fiterrormap = np.zeros(imshape)
     if DGauss:
-        im_g2_a = sp.zeros(imshape)
-        im_g2_v0 = sp.zeros(imshape)
-        im_g2_sigma = sp.zeros(imshape)
-        im_g2_a_e = sp.zeros(imshape)
-        im_g2_v0_e = sp.zeros(imshape)
-        im_g2_sigma_e = sp.zeros(imshape)
-        im_gmom_0 = sp.zeros(imshape)
-        im_gmom_1 = sp.zeros(imshape)
-        im_gmom_2 = sp.zeros(imshape)
+        im_g2_a = np.zeros(imshape)
+        im_g2_v0 = np.zeros(imshape)
+        im_g2_sigma = np.zeros(imshape)
+        im_g2_a_e = np.zeros(imshape)
+        im_g2_v0_e = np.zeros(imshape)
+        im_g2_sigma_e = np.zeros(imshape)
+        im_gmom_0 = np.zeros(imshape)
+        im_gmom_1 = np.zeros(imshape)
+        im_gmom_2 = np.zeros(imshape)
 
     if StoreModel:
-        modelcube = sp.zeros(cube.shape)
+        modelcube = np.zeros(cube.shape)
         if DGauss:
-            modelcube_g1 = sp.zeros(cube.shape)
-            modelcube_g2 = sp.zeros(cube.shape)
+            modelcube_g1 = np.zeros(cube.shape)
+            modelcube_g2 = np.zeros(cube.shape)
     if (DoBaseline):
-        base_a_map = sp.zeros(imshape)
-        base_b_map = sp.zeros(imshape)
+        base_a_map = np.zeros(imshape)
+        base_b_map = np.zeros(imshape)
     dv = abs(velocities[1] - velocities[0])
 
     if (singleLOS):
@@ -920,7 +920,7 @@ def exec_Gfit(cubefile,
     #passpoolresults = p.map(fitter, range(npix))
 
     print(('Done whole pool'))
-    # passpoolresults = sp.array(passpoolresults)
+    # passpoolresults = np.array(passpoolresults)
 
     for alospass in passpoolresults:
         if alospass[0] is None:
@@ -929,7 +929,6 @@ def exec_Gfit(cubefile,
         i = int(alospass[0])
         j = int(alospass[1])
 
-        
         im_gmom_0[j, i] = alospass[2]
         im_g_a[j, i] = alospass[3]
         im_g_a_e[j, i] = alospass[4]
