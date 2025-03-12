@@ -1,4 +1,3 @@
-import scipy as sp
 import astropy.io.fits as pf
 from scipy.integrate import simps, quad
 import numpy as np
