@@ -28,6 +28,12 @@ if not sys.warnoptions:
 
 c_kms = 1.0e-3 * const.c.value  ## light speed in km/s
 
+# Half-width, in units of the fitted line width, of the velocity window used
+# for the direct-summation moments (Smom_0, Smom_1, Smom_2). This is a
+# module-level global because fitter() runs in the worker pool; it is set by
+# exec_Gfit's nsigrange keyword argument before the pool is created.
+nsigrange = 5
+
 
 def gaussian(x, a, mu, sigma):
     return a * np.exp(-0.5 * ((x - mu) / sigma) ** 2.0)
@@ -711,7 +717,7 @@ def fitter(alos):
     else:
         Delta_i = g_sigma / dv
 
-    nsigrange = 5
+    # nsigrange is the module-level global set from exec_Gfit(nsigrange=...).
 
     i0 = int(ic - nsigrange * Delta_i)
     if i0 < 0:
@@ -739,8 +745,46 @@ def fitter(alos):
     Smom_8 = subvelo[np.argmax(lineofsight_spectrum[i0:i1])]
     Smax = np.max(lineofsight_spectrum[i0:i1])
 
-    if abs(Smom_0) > 0:
+    if LocalNoise:
+        rmsnoise_mom = localrmsnoise
+    elif rmsnoise > 0.0:
+        rmsnoise_mom = rmsnoise
+    else:
+        rmsnoise_mom = np.std(
+            lineofsight_spectrum[(velocities < g_v0 - 1.0) | (velocities > g_v0 + 1.0)]
+        )
+
+    # The noise enters every moment error purely as a positive scale factor, so
+    # sanitise it once here: it must be finite and non-negative, otherwise it
+    # would propagate its sign (or a NaN/inf) straight into Smom_1_e.
+    rmsnoise_mom = np.fabs(np.asarray(rmsnoise_mom, dtype=float))
+    if (not np.isfinite(rmsnoise_mom)) or (rmsnoise_mom <= 0.0):
+        rmsnoise_mom = np.fabs(np.std(lineofsight_spectrum))
+
+    vwindow = velocities[i0:i1]
+    nvels = len(vwindow)
+    if nvels >= 2:
+        wquad = simpson(np.eye(nvels), vwindow, axis=0)
+    else:
+        wquad = np.zeros(nvels)
+
+    var_D = np.sum((rmsnoise_mom * wquad) ** 2)
+    Smom_0_e = np.sqrt(var_D)
+
+    if np.fabs(Smom_0) > 0:
         Smom_1 /= Smom_0
+        # Error propagation for Smom_1 = N / D, with
+        #   N = sum_k w_k v_k f_k ,  D = sum_k w_k f_k
+        #   d(Smom_1)/d(f_k) = w_k (v_k - Smom_1) / D
+        # so (independent channels, per-channel rms noise rmsnoise_mom):
+        #   Var(Smom_1) = rmsnoise_mom**2 * sum_k [w_k (v_k - Smom_1)]**2 / D**2
+        # Assemble the variance as an explicit sum of squares and only then take
+        # the square root: that is non-negative by construction, no matter what
+        # sign the Simpson weights, the velocity axis or Smom_0 take.
+        var_Smom_1 = np.sum((rmsnoise_mom * wquad * (vwindow - Smom_1)) ** 2) / (
+            Smom_0**2
+        )
+        Smom_1_e = np.sqrt(var_Smom_1)
         if Smom_0 > 0:
             var = sign * simpson(
                 lineofsight_spectrum[i0:i1] * (velocities[i0:i1] - Smom_1) ** 2,
@@ -753,14 +797,9 @@ def fitter(alos):
         else:
             Smom_2 = -1e6
     else:
-        Smom_1 = -1e6
-        Smom_2 = -1e6
-
-    nvels = i1 - i0
-    Smom_0_e = localrmsnoise * np.sqrt(nvels)
-    Smom_1_e = np.sqrt(Smom_0_e * dv / np.fabs(Smom_0)) * np.sqrt(
-        np.sum(velocities[i0:i1] ** 2 + Smom_1**2 * nvels * dv**2 / Smom_0**2)
-    )
+        Smom_1 = 1e6
+        Smom_1_e = 1e6
+        Smom_2 = 1e6
 
     passresults = [
         i,
@@ -773,7 +812,9 @@ def fitter(alos):
         g_sigma,
         g_sigma_e,
         Smom_0,
+        Smom_0_e,
         Smom_1,
+        Smom_1_e,
         Smom_2,
         Smom_8,
         fiterror,
@@ -826,6 +867,7 @@ def exec_Gfit(
     cubemask=False,
     InvertMaskCube=False,  # True of uvmem conention
     PerformAccurateInteg=True,
+    nsigmarange=5,
 ):
     # Region=True: zoom into central region, defined as nx/2., with half side zoom_area
     # zoom_area=1.2 # arcsec
@@ -851,6 +893,7 @@ def exec_Gfit(
     global BadChannels
     global DoQuad
     global MaskCube
+    global nsigrange
 
     start_time = time.time()
     print("start Curve_fit:", time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime()))
@@ -868,6 +911,7 @@ def exec_Gfit(
         LOS = singleLOS
     BadChannels = MaskChannels
     DoQuad = PerformAccurateInteg
+    nsigrange = nsigmarange
 
     print("Collapsing cube from file:", cubefile)
     print(">>>>", cubefile)
@@ -980,6 +1024,8 @@ def exec_Gfit(
 
     SSmom_0 = np.zeros(imshape)
     SSmom_1 = np.zeros(imshape)
+    SSmom_0_e = np.zeros(imshape)
+    SSmom_1_e = np.zeros(imshape)
     SSmom_2 = np.zeros(imshape)
     SSmom_8 = np.zeros(imshape)
     SSIpeak = np.zeros(imshape)
@@ -1052,29 +1098,31 @@ def exec_Gfit(
         im_g_sigma_e[j, i] = alospass[8]
 
         SSmom_0[j, i] = alospass[9]
-        SSmom_1[j, i] = alospass[10]
-        SSmom_2[j, i] = alospass[11]
-        SSmom_8[j, i] = alospass[12]
+        SSmom_0_e[j, i] = alospass[10]
+        SSmom_1[j, i] = alospass[11]
+        SSmom_1_e[j, i] = alospass[12]
+        SSmom_2[j, i] = alospass[13]
+        SSmom_8[j, i] = alospass[14]
 
-        fiterrormap[j, i] = alospass[13]
-        gaussfit1 = alospass[14]
+        fiterrormap[j, i] = alospass[15]
+        gaussfit1 = alospass[16]
         gaussfits = gaussfit1.copy()
         if DGauss:
-            gaussfit2 = alospass[15]
-            im_g2_a[j, i] = alospass[16]
-            im_g2_a_e[j, i] = alospass[17]
-            im_g2_v0[j, i] = alospass[18]
-            im_g2_v0_e[j, i] = alospass[19]
-            im_g2_sigma[j, i] = alospass[20]
-            im_g2_sigma_e[j, i] = alospass[21]
-            im_gmom_8[j, i] = alospass[22]
-            im_gmom_0[j, i] = alospass[23]
-            im_gmom_1[j, i] = alospass[24]
-            im_gmom_2[j, i] = alospass[25]
-            icount = 25
+            gaussfit2 = alospass[17]
+            im_g2_a[j, i] = alospass[18]
+            im_g2_a_e[j, i] = alospass[19]
+            im_g2_v0[j, i] = alospass[20]
+            im_g2_v0_e[j, i] = alospass[21]
+            im_g2_sigma[j, i] = alospass[22]
+            im_g2_sigma_e[j, i] = alospass[23]
+            im_gmom_8[j, i] = alospass[24]
+            im_gmom_0[j, i] = alospass[25]
+            im_gmom_1[j, i] = alospass[26]
+            im_gmom_2[j, i] = alospass[27]
+            icount = 27
             gaussfits += gaussfit2
         else:
-            icount = 14
+            icount = 16
 
         modelspectrum = gaussfits.copy()
         if DoBaseline:
@@ -1212,6 +1260,8 @@ def exec_Gfit(
 
     pf.writeto(workdir + "/" + "Smom_0.fits", SSmom_0, head1, overwrite=True)
     pf.writeto(workdir + "/" + "Smom_1.fits", SSmom_1, head2, overwrite=True)
+    pf.writeto(workdir + "/" + "Smom_0_e.fits", SSmom_0_e, head1, overwrite=True)
+    pf.writeto(workdir + "/" + "Smom_1_e.fits", SSmom_1_e, head2, overwrite=True)
     pf.writeto(workdir + "/" + "Smom_2.fits", SSmom_2, head2, overwrite=True)
     pf.writeto(workdir + "/" + "Smom_8.fits", SSmom_8, head2, overwrite=True)
 
