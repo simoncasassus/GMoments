@@ -8,10 +8,10 @@ import re
 
 from pprint import pprint
 
-include_path='/home/simon/common/python/include/'
-sys.path.append(include_path)
-import ImUtils.Resamp as Resamp
-import ImUtils.Cube2Im as Cube2Im
+#include_path='/home/simon/common/python/include/'
+#sys.path.append(include_path)
+from ImUtils import Resamp 
+from ImUtils import Cube2Im
 
 
 def Zoom(cubefile,zoom_area=-1.,pixscale_factor=1.,Resample=False,fileout=''):
